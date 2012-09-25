@@ -1,0 +1,99 @@
+I developed TvCube server for broadcasting various video channels. 
+In our company it is used for 12 channels (4 per server)
+
+TVCUBE DESCRIPTION
+
+TvCube server is a software for playing scheduled video through Melted server.
+
+It loads generated schedules and interacts with Meleted server through Telnet. Can be configurated for playing more then one channel (unit). All schedules and configuration files must be written in YAML format.
+
+TVCUBE CLI
+
+tvcubed.pl [-c path_to config] start|stop|status|unitrestart IDX
+
+By default TvCube looks for configuration in /etc/tvcube/server.yml but you can specify another location.
+
+'start' command daemonizes the server then starts TvCube server, child processes for each channels and process for Melted. Keep monitoring each process status and restart if it stop responding.
+
+'stop' command stops all processes.
+
+'status' shows status of each channel and main daemon.
+
+'unitrestart IDX' sends HUP signal to one channel.
+
+
+SERVER CONFIGURATION
+
+server.yml
+
+---
+units:
+  - unit: 0
+    type: 'Server::TvCube3::Unit'
+    url: '127.0.0.1'
+    port: 5242
+    schedule: '/path_to_schedule/channel0.yml'
+    name: 'channel1'
+  - unit: 1
+  # more channels
+log_base: './path_to_logs/'
+pid_base: './path_to_pids/'
+check_user: tvcube
+dummy: 1
+
+'units' section is an array which describe channels. Each unit is a hash with options:
+
+'unit' - Position number and also internal Melted id for channel. Required 
+'type' - Type of unit handler (I will implement more handlers in future, now it should be 'Server::TvCube::Unit'). Required
+'url' - Melted address. Usually is '127.0.0.1'. Required
+'port' - Melted port. Usually 5242. Required
+'schedule' - YAML file with schedule for channel. Channel won't play if schedule is not specified, empty or has wrong format.
+
+also you should provide:
+
+'log_base' - Directory for log files (server.log, unit0.log ... unitN.log, melted.log)
+'pid_base' - Directory for pid files (server.pid, unit0.pid ... unitN.pid, melted.pid)
+'check_user' - Check if processes must start under specific user rights.
+'dummy' - Will skip Melted interaction if turned on. (Won't start melted process). Default: 0
+
+SCHEDULE
+
+channelN.yml
+
+---
+- entries:
+    - name: entry0
+      source_duration: 300
+      source_type: file
+      source_uri: entry0.mpg
+    - name: entry1
+      ord: 1
+      source_duration: 300
+      source_type: file
+      source_uri: entry1.mpg
+  name: Dummy Schedule
+  start_time: 1329004800
+
+Schedule is a YAML array of playlists. Each playlist has options:
+
+'name' - Just a name of the playlist. Will appear in log.
+'start_time' - UNIX timestamp specifing then the playlist should start
+'entries' - Array of playlist entries. Each entry has options:
+
+'name' - Just name of entry. Will appear in log.
+'source_duration' - Duration of source file (in seconds)
+'source_file' - Should be always 'file'
+'source_uri' - Path to video file
+
+For 'source_uri' you can use any video format supported by Melted (even text files with internal Melted instructions)
+
+MELTED SERVER
+
+Melted server is used as playout server in TvCube project. It should be installed on you server. For instructions please visit http://www.mltframework.org/ and http://mltframework.org/gitweb/melted.git
+
+DUMMY MODE
+
+If you want just test software without Melted server you can turn on dummy mode in configuration. TvCube will work as usual except it won't start/monitor Melted and won't send entries to it
+
+
+
